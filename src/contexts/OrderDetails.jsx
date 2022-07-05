@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useMemo, useEffect } from "react";
+import { pricePerItem } from "../constants";
 
 const OrderDetails = createContext();
 
 // create custom hook to check whether we're inside a provider
-function useOrderDetails() {
+export function useOrderDetails() {
   const context = useContext(OrderDetails);
 
   if (!context) {
@@ -15,13 +16,22 @@ function useOrderDetails() {
   return context;
 }
 
-function OrderDetailsProvider(props) {
+function calculateSubtotal(optionType, optionCounts) {
+  let optionCount = 0;
+  for (const count of optionCounts[optionType].value()) {
+    optionCount += count;
+  }
+
+  return optionCount * pricePerItem[optionType];
+}
+
+export function OrderDetailsProvider(props) {
   const [optionCounts, setOptionCounts] = useState({
-    scoops: new Map(),
+    scoops: new Map(), // 像物件一樣的 es6 格式
     toppings: new Map(),
   });
 
-  const [total, setTotal] = useState({
+  const [totals, setTotals] = useState({
     scoops: 0,
     toppings: 0,
     grandTotal: 0,
@@ -32,7 +42,7 @@ function OrderDetailsProvider(props) {
     const toppingsSubtotal = calculateSubtotal("toppings", optionCounts);
     const grandTotal = scoopSubtotal + toppingsSubtotal;
 
-    setTotal({
+    setTotals({
       scoops: scoopSubtotal,
       toppings: toppingsSubtotal,
       grandTotal,
@@ -44,7 +54,7 @@ function OrderDetailsProvider(props) {
       const newOptionCounts = { ...optionCounts };
 
       // update option count for this item with the new value
-      const optionCountsMap = optionCounts[optionType];
+      const optionCountsMap = newOptionCounts[optionType];
       optionCountsMap.set(itemName, parseInt(newItemCount, 10));
 
       setOptionCounts(newOptionCounts);
@@ -52,8 +62,8 @@ function OrderDetailsProvider(props) {
 
     // getter: object containing option counts for scoops and toppings, subtotals and totals.
     // setter: updateOptionCount
-    return [{ ...optionCounts }, updateItemCount];
-  }, [optionCounts]);
+    return [{ ...optionCounts, totals }, updateItemCount];
+  }, [optionCounts, totals]);
 
   return <OrderDetails.Provider value={value} {...props} />;
 }
